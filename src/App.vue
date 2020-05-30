@@ -1,32 +1,44 @@
 <template>
   <div id="app">
     <div id="nav">
-      <router-link to="/">Home</router-link> |
+      <router-link to="/">Voice recorder</router-link>
+      <router-link to="/how-to-record">How to record</router-link>
       <router-link to="/about">About</router-link>
+      <router-link to="/disclaimer">Disclaimer</router-link>
+      <router-link to="/feedback">Feedback</router-link>
     </div>
-    <router-view/>
+    <router-view />
   </div>
 </template>
 
-<style>
+<script>
+export default {
+  name: "App",
+  components: {},
+  methods: {}
+};
+</script>
+
+<style scoped>
+@import "./assets/css/base.css";
+@import "./assets/css/icomoon/style.css";
+
 #app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+  width: 880px;
+  margin: 0 auto;
 }
 
 #nav {
-  padding: 30px;
+  display: flex;
+  line-height: 20px;
 }
-
-#nav a {
-  font-weight: bold;
-  color: #2c3e50;
+a {
+  padding: 20px;
 }
-
-#nav a.router-link-exact-active {
-  color: #42b983;
+a:nth-child(1) {
+  margin-right: auto;
+}
+.router-link-exact-active {
+  text-decoration: none;
 }
 </style>

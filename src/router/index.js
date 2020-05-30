@@ -1,29 +1,46 @@
-import Vue from 'vue'
-import VueRouter from 'vue-router'
-import Home from '../views/Home.vue'
+import Vue from "vue";
+import VueRouter from "vue-router";
 
-Vue.use(VueRouter)
+const VoiceRecorder = () => import("../views/voicerecorder/VoiceRecorder.vue");
+const HowToRecord = () => import("../views/HowToRecord.vue");
+const About = () => import("../views/About.vue");
+const Disclaimer = () => import("../views/Disclaimer.vue");
+const Feedback = () => import("../views/Feedback.vue");
 
-  const routes = [
+Vue.use(VueRouter);
+
+const routes = [
   {
-    path: '/',
-    name: 'Home',
-    component: Home
+    path: "/",
+    name: "VoiceRecorder",
+    component: VoiceRecorder,
   },
   {
-    path: '/about',
-    name: 'About',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/About.vue')
-  }
-]
+    path: "/how-to-record",
+    name: "HowToRecord",
+    component: HowToRecord,
+  },
+  {
+    path: "/about",
+    name: "About",
+    component: About,
+  },
+  {
+    path: "/disclaimer",
+    name: "Disclaimer",
+    component: Disclaimer,
+  },
+  {
+    path: "/feedback",
+    name: "Feedback",
+    component: Feedback,
+  },
+];
 
 const router = new VueRouter({
-  mode: 'history',
+  mode: "history",
   base: process.env.BASE_URL,
-  routes
-})
+  routes,
+});
 
-export default router
+export default router;
