@@ -1,9 +1,9 @@
 <template>
   <div class="record-buttons">
     <button @click="clickLoopPlayback">
-      <span class="icon-spinner11" :class="{'notActive':isNotLoopPlayback}"></span>
+      <span class="icon-spinner11" :class="{'notActive':notShowLoopPlayback}"></span>
     </button>
-    <button @click="clickPlay" :class="{'notActive':notHaveResource}">
+    <button @click="clickPlay" :class="{'notActive':notShowResource }">
       <span class="icon-play3" v-if="isNotPlay"></span>
       <span class="icon-stop2" v-else></span>
     </button>
@@ -24,21 +24,24 @@ export default {
   name: "RecordButtons",
   data() {
     return {
-      notHaveResource: true,
       isNotLoopPlayback: true,
+      notShowResource: true,
+      notShowLoopPlayback: true,
       isNotPlay: true,
       cannotUndo: true,
       cannotRedo: true,
       cannotRecord: false,
       tempState: [],
-      pausePlay: false
+      pausePlay: false,
+      recording: false,
+      pause: false
     };
   },
   props: {
-    recording: {
-      type: Boolean,
-      default: false
-    },
+    // recording: {
+    //   type: Boolean,
+    //   default: false
+    // },
     haveResource: {
       type: Boolean,
       default: false
@@ -47,16 +50,14 @@ export default {
   computed: {
     currentVersionInStore() {
       return this.$store.state.currentVersion;
+    },
+    notHaveResource() {
+      this.notShowResource = !this.haveResource;
+      return !this.haveResource;
+      console.log(!this.haveResource);
     }
   },
   watch: {
-    haveResource: {
-      handler(val, oldval) {
-        console.log("当前haveResource：" + val);
-        this.notHaveResource = !val;
-        console.log("this.notHaveResource ", this.notHaveResource);
-      }
-    },
     isNotPlay(val, oldval) {
       if (val === true && oldval === false) {
         this.reSetOtherButton("play");
@@ -104,34 +105,79 @@ export default {
       if (this.isNotLoopPlayback) {
         // 如果没有循环播放
 
+        // console.log("this.isNotPlay", this.isNotPlay, this.pausePlay);
+
         if (this.isNotPlay) {
-          this.isNotPlay = !this.isNotPlay; //先执行
+          this.isNotPlay = false; //先执行
           if (this.pausePlay) {
+            console.log("emitle ma ");
+
             this.$emit("resumePlay", () => {
               this.$emit("stopPlay");
               this.isNotPlay = true;
+              this.pausePlay = false;
             });
           } else {
             this.$emit("play", () => {
               this.$emit("stopPlay");
               this.isNotPlay = true;
+              this.pausePlay = false;
             });
           }
         } else {
           this.$emit("pausePlay");
           this.pausePlay = true;
-          this.isNotPlay = !this.isNotPlay; //先执行
+          this.isNotPlay = true; //先执行
+        }
+      } else {
+        //循环播放的时候
+        if (this.isNotPlay) {
+          this.isNotPlay = false; //先执行
+          if (this.pausePlay) {
+            this.pausePlay = false;
+            this.LoopPlayback("pausePlay");
+          } else {
+            this.LoopPlayback();
+          }
+        } else {
+          this.$emit("pausePlay");
+          this.pausePlay = true;
+          this.isNotPlay = true;
         }
       }
     },
+    LoopPlayback(s) {
+      if (this.isNotLoopPlayback) {
+        this.$emit("stopPlay");
+        this.isNotPlay = true;
+        this.pausePlay = false;
+        return null;
+      }
+      if (s === "pausePlay") {
+        this.$emit("resumePlay", () => {
+          this.$emit("stopPlay");
+          this.LoopPlayback();
+        });
+      } else {
+        this.$emit("play", () => {
+          this.$emit("stopPlay");
+          this.LoopPlayback();
+        });
+      }
+    },
+
     clickLoopPlayback() {
+      if (!this.isNotPlay || this.recording) {
+        return null;
+      }
       this.isNotLoopPlayback = !this.isNotLoopPlayback;
+      this.notShowLoopPlayback = !this.notShowLoopPlayback;
     },
     runOrPause() {
       if (!this.isNotPlay) {
         return null;
       }
-
+      // 修改UI
       if (this.recording === false) {
         this.$refs.mic.style.color = "red";
         this.$refs.mic.style.border = "solid 2px red";
@@ -141,17 +187,34 @@ export default {
         this.$refs.mic.style.border = "solid 2px rgb(61, 159, 234)";
         this.reSetOtherButton("Record");
       }
-      this.$emit("runOrPause", () => {
-        this.notHaveResource = false;
-      });
+
+      this.recording = !this.recording;
+      this.$emit("showOrHide", this.recording);
+
+      // 正在录音
+      if (this.recording) {
+        if (this.pause) {
+          this.$emit("resume");
+        } else {
+          this.$emit("start");
+        }
+
+        // 暂停录音
+      } else {
+        console.log("暂停录音");
+        this.$emit("pause");
+        this.pause = true;
+        // this.notHaveResource = false;
+        console.log(this.notHaveResource);
+      }
     },
     changeOtherButton(s) {
       // 先  状态暂存  之后恢复
       this.tempState = [];
 
       if (s === "Record") {
-        this.tempState.push(this.notHaveResource);
-        this.notHaveResource = true;
+        this.tempState.push(this.notShowResource);
+        this.notShowResource = true;
       }
       if (s === "play") {
         this.tempState.push(this.cannotRecord);
@@ -159,20 +222,20 @@ export default {
       }
 
       this.tempState.push(
-        this.isNotLoopPlayback,
+        this.notShowLoopPlayback,
         this.cannotUndo,
         this.cannotRedo
       );
-      this.isNotLoopPlayback = this.cannotUndo = this.cannotRedo = true;
+      this.notShowLoopPlayback = this.cannotUndo = this.cannotRedo = true;
     },
     reSetOtherButton(s) {
       if (s === "Record") {
-        this.notHaveResource = this.tempState[0];
+        this.notShowResource = this.tempState[0];
       }
       if (s === "play") {
         this.cannotRecord = this.tempState[0];
       }
-      this.isNotLoopPlayback = this.tempState[1];
+      this.notShowLoopPlayback = this.tempState[1];
       this.cannotUndo = this.tempState[2];
       this.cannotRedo = this.tempState[3];
     }

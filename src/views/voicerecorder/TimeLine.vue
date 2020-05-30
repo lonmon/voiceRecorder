@@ -31,11 +31,11 @@
       <!-- 蓝筐 -->
       <div class="timeline_scale"></div>
       <!-- 白布 -->
-      <div v-for="recorder in recorders" :key="recorder.recorderId">
+      <div v-for="item in recorders" :key="item.id">
         <div class="timeline_layers">
           <div class="timeline_layers_buttons">
-            <button v-if="recorder.recorderId===selected">SELECTED</button>
-            <button v-else class="btnunselected" @click="select(recorder.recorderId)">SELECT</button>
+            <button v-if="item.id===recorder.id">SELECTED</button>
+            <button v-else class="btnunselected" @click="select(item)">SELECT</button>
             <volume class="volume" ref="volume" />
           </div>
         </div>
@@ -58,9 +58,11 @@ export default {
         return [];
       }
     },
-    selected: {
-      type: String,
-      default: ""
+    recorder: {
+      type: Object,
+      default() {
+        return {};
+      }
     }
   },
   // props: ["recorders", "selected"],
@@ -70,8 +72,8 @@ export default {
     addANew() {
       this.$emit("addANew");
     },
-    select(id) {
-      this.$emit("select", id);
+    select(recorder) {
+      this.$emit("select", recorder);
     }
   }
 };
@@ -150,9 +152,35 @@ export default {
   margin: 0 auto;
   background: rgb(255, 174, 0);
 }
+
+.timeline_cursor::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -6px;
+  width: 0;
+  height: 0;
+  border-top: solid 8px rgb(255, 174, 0);
+  border-left: solid 5px transparent;
+  border-right: solid 5px transparent;
+  border-bottom: solid 8px transparent;
+}
+.timeline_cursor::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  bottom: -6px;
+  width: 0;
+  height: 0;
+  border-bottom: solid 8px rgb(255, 174, 0);
+  border-left: solid 5px transparent;
+  border-right: solid 5px transparent;
+  border-top: solid 8px transparent;
+}
 .timeline_scale {
   height: 20px;
   background: rgb(61, 159, 234);
+  border-radius: 2px;
 }
 
 /* =============layers========================= */
@@ -161,6 +189,7 @@ export default {
   margin-top: 6px;
   background: #fff;
   text-align: left;
+  border-radius: 3px;
 }
 .timeline_layers_buttons {
   display: flex;

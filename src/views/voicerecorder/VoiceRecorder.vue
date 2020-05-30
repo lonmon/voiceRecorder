@@ -2,25 +2,27 @@
   <div id="voice_recorder">
     <time-line
       :recorders="recorders"
-      :selected="selected"
+      :recorder="recorder"
       @addANew="addANew"
       @select="changeSelect"
       ref="timeLine"
     />
     <record-buttons
       :haveResource="haveResource"
-      :recording="recording"
-      @runOrPause="runOrPause"
       @getCurrentRecorders="getCurrentRecorders"
+      @showOrHide="showOrHide"
+      @start="start"
       @stop="stop"
       @pause="pause"
+      @resume="resume"
       @play="play"
       @pausePlay="pausePlay"
       @stopPlay="stopPlay"
+      @resumePlay="resumePlay"
     />
     <timer />
     <toolbar class="toolbar" ref="toolbar" @popupShow="popupShow" />
-    <popup class="popup" ref="popup" :selectedRecorder="selectedRecorder" />
+    <popup class="popup" ref="popup" :recorder="recorder" />
   </div>
 </template>
 
@@ -44,9 +46,10 @@ export default {
       recorders: [],
       selected: "",
       recording: false,
-      selectedRecorder: {},
+      recorder: {},
       inBackVersion: false,
-      haveResource: false
+      haveResource: false,
+      resouse: {}
     };
   },
   components: {
@@ -64,39 +67,32 @@ export default {
 
       // 如果选择的不存在，就变成最下面的那个
       const temp = this.recorders.find(item => {
-        return item.recorderId === this.selected;
+        return item.id === this.recorder.id;
       });
       if (temp) {
-        this.selectedRecorder = temp;
+        this.recorder = temp;
       } else {
-        this.changeSelect(this.recorders[this.recorders.length - 1].recorderId);
+        this.changeSelect(this.recorders[this.recorders.length - 1]);
       }
     },
     // add a new layer
     addANew() {
-      const recorderId = id();
       const recorder = new Recorder({
         sampleBits: 16, // 采样位数，支持 8 或 16，默认是16
         sampleRate: 16000, // 采样率，支持 11025、16000、22050、24000、44100、48000，根据浏览器默认值，我的chrome是48000
         numChannels: 1
       });
-
-      this.selectedRecorder = {
-        recorderId,
-        recorder
-      };
-      this.selected = recorderId;
-      this.recorders.push(this.selectedRecorder);
+      recorder.id = id();
+      this.recorder = recorder;
+      this.recorders.push(this.recorder);
       this.$store.commit("addversion", this.recorders);
     },
+
     // 修改  select
-    changeSelect(id) {
+    changeSelect(recorder) {
       if (!this.recording) {
-        this.selected = id;
+        this.recorder = recorder;
       }
-      this.selectedRecorder = this.recorders.find(item => {
-        return item.recorderId === this.selected;
-      });
     },
     runOrPause(callback) {
       this.recording = !this.recording;
@@ -104,37 +100,24 @@ export default {
 
       // 正在录音
       if (this.recording) {
-        if (this.selectedRecorder.recorder.ispause) {
-          console.log("继续录音");
+        if (this.recorder.ispause) {
           this.resume();
         } else {
-          console.log("开始录音");
           this.start();
         }
         // 暂停录音
       } else {
         console.log("暂停录音");
         this.pause();
-        this.$store.commit("addversion", this.recorders);
         callback();
       }
     },
-    //====================================================================底部toolbar显示
-    showOrHide() {
-      if (!this.recording) {
-        this.$refs.toolbar.$el.style.display = "block";
-      } else {
-        this.$refs.toolbar.$el.style.display = "none";
-      }
-    },
-    popupShow() {
-      this.$refs.popup.$el.style.display = "block";
-    },
+
     // =====================================================================Recorder中的方法调用
     start() {
-      this.selectedRecorder.recorder.start().then(
+      this.recorder.start().then(
         () => {
-          this.startFlag = true;
+          console.log("开始录音");
           // 开始录音
         },
         error => {
@@ -144,48 +127,90 @@ export default {
       );
     },
     resume() {
-      this.selectedRecorder.recorder.resume();
+      console.log("继续录音", this.recorder);
+
+      this.recorder.resume();
     },
     stop() {
-      this.selectedRecorder.recorder.stop();
-      console.log("stop", this.selectedRecorder.recorder.duration);
+      this.recorder.stop();
+      console.log("stop", this.recorder.duration);
     },
     pause() {
-      this.selectedRecorder.recorder.pause();
-      console.log("pause", this.selectedRecorder.recorder);
+      this.recorder.pause();
+      this.$store.commit("addversion", this.recorders);
+
+      console.log("pause", this.recorder.ispause);
     },
-    //=========================================================================播放相关的方法
+    //=========================================================================播放相关的方法===================================
     play(fn) {
       console.log("运行play");
+      this.resouse = lodash.cloneDeep(this.recorder); //为什么不行？？？？？？
+      // this.resouse = this.recorder; //为什么不行？？？？？？
+      this.resouse.onstopplay = () => {
+        console.log("onstopplay", {
+          ispause: this.recorder.ispause,
+          isplaying: this.recorder.isplaying,
+          isrecording: this.recorder.isrecording
+        });
+      };
+      this.resouse.onplayend = () => {
+        console.log("运行结束", {
+          ispause: this.recorder.ispause,
+          isplaying: this.recorder.isplaying,
+          isrecording: this.recorder.isrecording
+        });
+        fn();
+      };
+      this.resouse.onplay = () => {};
 
-      Player.addPlayEnd(fn);
-      const temp = lodash.cloneDeep(this.selectedRecorder.recorder); //为什么不行？？？？？？
-      console.log("Play前", this.selectedRecorder.recorder, temp);
-      Player.play(temp.getWAV().buffer);
-      console.log("Play后", this.selectedRecorder.recorder, temp);
+      console.log("Play前", {
+        ispause: this.recorder.ispause,
+        isplaying: this.recorder.isplaying,
+        isrecording: this.recorder.isrecording
+      });
+      this.resouse.play();
+      console.log("Play后", {
+        ispause: this.recorder.ispause,
+        isplaying: this.recorder.isplaying,
+        isrecording: this.recorder.isrecording
+      });
     },
     pausePlay() {
-      Player.pausePlay();
-      console.log("pausePlay", this.selectedRecorder.recorder.duration);
+      console.log("暂停播放", this.resouse.duration);
+      this.resouse.pausePlay();
     },
-    resumePlay() {
-      Player.resumePlay();
+    resumePlay(fn) {
+      console.log("继续播放");
+      this.resouse.onplayend = fn;
+      this.resouse.resumePlay();
     },
     stopPlay() {
-      console.log("stopPlay");
-      Player.stopPlay();
+      console.log("结束播放");
+      this.resouse.stopPlay();
     },
     getPlayTime() {
-      console.log(Player.getPlayTime());
+      console.log(this.resouse.getPlayTime());
+    },
+    //====================================================================底部toolbar显示
+    showOrHide(recording) {
+      if (!recording) {
+        this.$refs.toolbar.$el.style.display = "block";
+      } else {
+        this.$refs.toolbar.$el.style.display = "none";
+      }
+    },
+    popupShow() {
+      this.$refs.popup.$el.style.display = "block";
     }
   },
   watch: {
-    selectedRecorder: {
-      // deep: true,
+    recorder: {
+      deep: true,
       handler(val, oldval) {
-        console.log("selec watch");
-        this.haveResource = val.recorder.duration != 0;
-        console.log(this.haveResource);
+        this.haveResource = val.duration != 0;
+        // console.log("haveresource watch", this.haveResource);
+
+        // console.log(this.haveResource);
       }
     }
   },
