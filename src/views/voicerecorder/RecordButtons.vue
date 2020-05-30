@@ -3,12 +3,16 @@
     <button @click="clickLoopPlayback">
       <span class="icon-spinner11" :class="{'notActive':notShowLoopPlayback}"></span>
     </button>
-    <button @click="clickPlay" :class="{'notActive':notShowResource }">
-      <span class="icon-play3" v-if="isNotPlay"></span>
-      <span class="icon-stop2" v-else></span>
+    <button @click="clickPlay" :class="{'notActive':notHaveResource }">
+      <span class="icon-stop2" v-if="this.recorder.isplaying"></span>
+      <span class="icon-play3" v-else></span>
     </button>
-    <button>
-      <span class="icon-mic" @click="runOrPause" ref="mic" :class="{'notActive':cannotRecord}"></span>
+    <button @click="runOrPause">
+      <span
+        class="icon-mic"
+        ref="mic"
+        :class="{'notActive':cannotRecord,'isrecording':isrecording }"
+      ></span>
     </button>
     <button>
       <span class="icon-undo2" @click="undo" :class="{'notActive':cannotUndo}"></span>
@@ -20,10 +24,15 @@
 </template>
 
 <script>
+import lodash from "lodash";
+
 export default {
   name: "RecordButtons",
   data() {
     return {
+      playIsPause: false,
+      notHaveResource: true,
+      isrecording: false,
       isNotLoopPlayback: true,
       notShowResource: true,
       notShowLoopPlayback: true,
@@ -31,33 +40,26 @@ export default {
       cannotUndo: true,
       cannotRedo: true,
       cannotRecord: false,
+
       tempState: [],
-      pausePlay: false,
-      recording: false,
-      pause: false
+      recording: false
     };
   },
   props: {
-    // recording: {
-    //   type: Boolean,
-    //   default: false
-    // },
-    haveResource: {
-      type: Boolean,
-      default: false
+    recorder: {
+      type: Object,
+      default() {
+        return {};
+      }
     }
   },
   computed: {
     currentVersionInStore() {
       return this.$store.state.currentVersion;
-    },
-    notHaveResource() {
-      this.notShowResource = !this.haveResource;
-      return !this.haveResource;
-      console.log(!this.haveResource);
     }
   },
   watch: {
+    //播放监听
     isNotPlay(val, oldval) {
       if (val === true && oldval === false) {
         this.reSetOtherButton("play");
@@ -86,7 +88,7 @@ export default {
       if (this.cannotRedo) {
         return null;
       } else {
-        this.$store.commit("foreVersion");
+        this.$emit("controlVersion", "foreVersion");
         this.$emit("getCurrentRecorders");
       }
     },
@@ -94,8 +96,8 @@ export default {
       if (this.cannotUndo) {
         return null;
       } else {
-        this.$store.commit("backVersion");
-        this.$emit("getCurrentRecorders", "toBackVersion");
+        this.$emit("controlVersion", "backVersion");
+        this.$emit("getCurrentRecorders");
       }
     },
     clickPlay() {
@@ -107,35 +109,28 @@ export default {
 
         // console.log("this.isNotPlay", this.isNotPlay, this.pausePlay);
 
-        if (this.isNotPlay) {
-          this.isNotPlay = false; //先执行
-          if (this.pausePlay) {
-            console.log("emitle ma ");
-
+        if (this.recorder.isplaying) {
+          if (this.playIsPause) {
             this.$emit("resumePlay", () => {
               this.$emit("stopPlay");
-              this.isNotPlay = true;
-              this.pausePlay = false;
+              this.playIsPause = false;
             });
           } else {
-            this.$emit("play", () => {
-              this.$emit("stopPlay");
-              this.isNotPlay = true;
-              this.pausePlay = false;
-            });
+            this.$emit("pausePlay");
+            this.playIsPause = true;
           }
         } else {
-          this.$emit("pausePlay");
-          this.pausePlay = true;
-          this.isNotPlay = true; //先执行
+          this.play(() => {
+            this.$emit("stopPlay");
+            this.playIsPause = false;
+          });
         }
       } else {
         //循环播放的时候
         if (this.isNotPlay) {
-          this.isNotPlay = false; //先执行
-          if (this.pausePlay) {
-            this.pausePlay = false;
-            this.LoopPlayback("pausePlay");
+          if (this.playIsPause) {
+            this.playIsPause = false;
+            this.LoopPlayback("playIsPause");
           } else {
             this.LoopPlayback();
           }
@@ -173,54 +168,18 @@ export default {
       this.isNotLoopPlayback = !this.isNotLoopPlayback;
       this.notShowLoopPlayback = !this.notShowLoopPlayback;
     },
-    runOrPause() {
-      if (!this.isNotPlay) {
-        return null;
-      }
-      // 修改UI
-      if (this.recording === false) {
-        this.$refs.mic.style.color = "red";
-        this.$refs.mic.style.border = "solid 2px red";
-        this.changeOtherButton("Record");
-      } else {
-        this.$refs.mic.style.color = "rgb(61, 159, 234)";
-        this.$refs.mic.style.border = "solid 2px rgb(61, 159, 234)";
-        this.reSetOtherButton("Record");
-      }
 
-      this.recording = !this.recording;
-      this.$emit("showOrHide", this.recording);
-
-      // 正在录音
-      if (this.recording) {
-        if (this.pause) {
-          this.$emit("resume");
-        } else {
-          this.$emit("start");
-        }
-
-        // 暂停录音
-      } else {
-        console.log("暂停录音");
-        this.$emit("pause");
-        this.pause = true;
-        // this.notHaveResource = false;
-        console.log(this.notHaveResource);
-      }
-    },
     changeOtherButton(s) {
       // 先  状态暂存  之后恢复
       this.tempState = [];
-
       if (s === "Record") {
-        this.tempState.push(this.notShowResource);
-        this.notShowResource = true;
+        this.tempState.push(this.notHaveResource);
+        this.notHaveResource = true;
       }
       if (s === "play") {
         this.tempState.push(this.cannotRecord);
         this.cannotRecord = true;
       }
-
       this.tempState.push(
         this.notShowLoopPlayback,
         this.cannotUndo,
@@ -230,7 +189,7 @@ export default {
     },
     reSetOtherButton(s) {
       if (s === "Record") {
-        this.notShowResource = this.tempState[0];
+        this.notHaveResource = this.tempState[0];
       }
       if (s === "play") {
         this.cannotRecord = this.tempState[0];
@@ -238,7 +197,119 @@ export default {
       this.notShowLoopPlayback = this.tempState[1];
       this.cannotUndo = this.tempState[2];
       this.cannotRedo = this.tempState[3];
+    },
+
+    // =====================================================================Recorder中的方法调用
+    start() {
+      this.recorder.start().then(
+        () => {
+          console.log("开始录音");
+          // 开始录音
+        },
+        error => {
+          // 出错了
+          console.log(`${error.name} : ${error.message}`);
+        }
+      );
+    },
+    resume() {
+      console.log("继续录音", this.recorder);
+
+      this.recorder.resume();
+    },
+    stop() {
+      this.recorder.stop();
+      console.log("stop", this.recorder.duration);
+    },
+    pause() {
+      this.recorder.pause();
+      // this.ispause = true;
+      this.$emit("controlVersion", "addversion");
+
+      // console.log("pause", this.recorder.ispause);
+    },
+    //=========================================================================播放相关的方法===================================
+    runOrPause() {
+      this.isrecording = !this.isrecording;
+      if (this.recorder.isplaying) {
+        return null;
+      }
+      // 修改其他的button
+      if (this.isrecording) {
+        this.changeOtherButton("Record");
+      } else {
+        this.reSetOtherButton("Record");
+      }
+
+      this.$emit("toolbarShowOrHide", this.isrecording);
+
+      // 在录音->暂停/继续
+      if (this.recorder.isrecording) {
+        if (this.recorder.ispause) {
+          this.resume();
+        } else {
+          console.log("暂停录音");
+          this.pause();
+          this.notHaveResource = false;
+          // console.log(this.notHaveResource);
+        }
+        // 没在录音就开始录音
+      } else {
+        this.start();
+      }
+    },
+    play(fn) {
+      console.log("运行play");
+      this.resouse = lodash.cloneDeep(this.recorder); //为什么不行？？？？？？
+      // this.resouse = this.recorder; //为什么不行？？？？？？
+      this.resouse.onstopplay = () => {
+        console.log("onstopplay", {
+          ispause: this.recorder.ispause,
+          isplaying: this.recorder.isplaying,
+          isrecording: this.recorder.isrecording
+        });
+      };
+      this.resouse.onplayend = () => {
+        console.log("运行结束", {
+          ispause: this.recorder.ispause,
+          isplaying: this.recorder.isplaying,
+          isrecording: this.recorder.isrecording
+        });
+        fn();
+      };
+      this.resouse.onplay = () => {};
+
+      console.log("Play前", {
+        ispause: this.recorder.ispause,
+        isplaying: this.recorder.isplaying,
+        isrecording: this.recorder.isrecording
+      });
+      this.resouse.play();
+      console.log("Play后", {
+        ispause: this.recorder.ispause,
+        isplaying: this.recorder.isplaying,
+        isrecording: this.recorder.isrecording
+      });
+    },
+    pausePlay() {
+      console.log("暂停播放", this.resouse.duration);
+      this.resouse.pausePlay();
+    },
+    resumePlay(fn) {
+      console.log("继续播放");
+      this.resouse.onplayend = fn;
+      this.resouse.resumePlay();
+    },
+    stopPlay() {
+      console.log("结束播放");
+      this.resouse.stopPlay();
+    },
+    getPlayTime() {
+      console.log(this.resouse.getPlayTime());
     }
+  },
+  updated() {
+    this.notHaveResource = this.recorder.duration === 0;
   }
 };
 </script>
@@ -269,5 +340,9 @@ button:nth-child(3) span {
 }
 .notActive {
   opacity: 0.5;
+}
+.isrecording {
+  color: red;
+  border: solid 2px red !important;
 }
 </style>

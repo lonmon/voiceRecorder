@@ -8,17 +8,10 @@
       ref="timeLine"
     />
     <record-buttons
-      :haveResource="haveResource"
+      :recorder="recorder"
       @getCurrentRecorders="getCurrentRecorders"
-      @showOrHide="showOrHide"
-      @start="start"
-      @stop="stop"
-      @pause="pause"
-      @resume="resume"
-      @play="play"
-      @pausePlay="pausePlay"
-      @stopPlay="stopPlay"
-      @resumePlay="resumePlay"
+      @toolbarShowOrHide="toolbarShowOrHide"
+      @controlVersion="controlVersion"
     />
     <timer />
     <toolbar class="toolbar" ref="toolbar" @popupShow="popupShow" />
@@ -29,7 +22,6 @@
 <script>
 import lodash from "lodash";
 import Recorder from "js-audio-recorder";
-import Player from "../../js-audio-recorder/src/player/player";
 
 import { id } from "../../common/utils";
 
@@ -44,11 +36,8 @@ export default {
   data() {
     return {
       recorders: [],
-      selected: "",
-      recording: false,
       recorder: {},
       inBackVersion: false,
-      haveResource: false,
       resouse: {}
     };
   },
@@ -60,7 +49,13 @@ export default {
     Popup
   },
   methods: {
-    getCurrentRecorders(s) {
+    controlVersion(s) {
+      this.$store.commit(s, this.recorders);
+    },
+    getCurrentRecorders() {
+      console.log(
+        this.$store.state.historyArr[this.$store.state.currentVersion]
+      );
       this.recorders = lodash.cloneDeep(
         this.$store.state.historyArr[this.$store.state.currentVersion]
       );
@@ -71,6 +66,7 @@ export default {
       });
       if (temp) {
         this.recorder = temp;
+        console.log(this.recorder.duration);
       } else {
         this.changeSelect(this.recorders[this.recorders.length - 1]);
       }
@@ -86,6 +82,7 @@ export default {
       this.recorder = recorder;
       this.recorders.push(this.recorder);
       this.$store.commit("addversion", this.recorders);
+      console.log("新加了一个 ", this.recorder);
     },
 
     // 修改  select
@@ -94,109 +91,14 @@ export default {
         this.recorder = recorder;
       }
     },
-    runOrPause(callback) {
-      this.recording = !this.recording;
-      this.showOrHide();
 
-      // 正在录音
-      if (this.recording) {
-        if (this.recorder.ispause) {
-          this.resume();
-        } else {
-          this.start();
-        }
-        // 暂停录音
-      } else {
-        console.log("暂停录音");
-        this.pause();
-        callback();
-      }
-    },
-
-    // =====================================================================Recorder中的方法调用
-    start() {
-      this.recorder.start().then(
-        () => {
-          console.log("开始录音");
-          // 开始录音
-        },
-        error => {
-          // 出错了
-          console.log(`${error.name} : ${error.message}`);
-        }
-      );
-    },
-    resume() {
-      console.log("继续录音", this.recorder);
-
-      this.recorder.resume();
-    },
-    stop() {
-      this.recorder.stop();
-      console.log("stop", this.recorder.duration);
-    },
-    pause() {
-      this.recorder.pause();
-      this.$store.commit("addversion", this.recorders);
-
-      console.log("pause", this.recorder.ispause);
-    },
-    //=========================================================================播放相关的方法===================================
-    play(fn) {
-      console.log("运行play");
-      this.resouse = lodash.cloneDeep(this.recorder); //为什么不行？？？？？？
-      // this.resouse = this.recorder; //为什么不行？？？？？？
-      this.resouse.onstopplay = () => {
-        console.log("onstopplay", {
-          ispause: this.recorder.ispause,
-          isplaying: this.recorder.isplaying,
-          isrecording: this.recorder.isrecording
-        });
-      };
-      this.resouse.onplayend = () => {
-        console.log("运行结束", {
-          ispause: this.recorder.ispause,
-          isplaying: this.recorder.isplaying,
-          isrecording: this.recorder.isrecording
-        });
-        fn();
-      };
-      this.resouse.onplay = () => {};
-
-      console.log("Play前", {
-        ispause: this.recorder.ispause,
-        isplaying: this.recorder.isplaying,
-        isrecording: this.recorder.isrecording
-      });
-      this.resouse.play();
-      console.log("Play后", {
-        ispause: this.recorder.ispause,
-        isplaying: this.recorder.isplaying,
-        isrecording: this.recorder.isrecording
-      });
-    },
-    pausePlay() {
-      console.log("暂停播放", this.resouse.duration);
-      this.resouse.pausePlay();
-    },
-    resumePlay(fn) {
-      console.log("继续播放");
-      this.resouse.onplayend = fn;
-      this.resouse.resumePlay();
-    },
-    stopPlay() {
-      console.log("结束播放");
-      this.resouse.stopPlay();
-    },
-    getPlayTime() {
-      console.log(this.resouse.getPlayTime());
-    },
     //====================================================================底部toolbar显示
-    showOrHide(recording) {
-      if (!recording) {
-        this.$refs.toolbar.$el.style.display = "block";
+    toolbarShowOrHide(recording) {
+      const toolvar = this.$refs.toolbar.$el;
+      if (recording) {
+        toolvar.style.display = "none";
       } else {
-        this.$refs.toolbar.$el.style.display = "none";
+        toolvar.style.display = "block";
       }
     },
     popupShow() {
@@ -207,10 +109,7 @@ export default {
     recorder: {
       deep: true,
       handler(val, oldval) {
-        this.haveResource = val.duration != 0;
-        // console.log("haveresource watch", this.haveResource);
-
-        // console.log(this.haveResource);
+        // console.log(val);
       }
     }
   },

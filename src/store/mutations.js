@@ -16,6 +16,8 @@ const mutations = {
     }
   },
   foreVersion(state) {
+    console.log(state.currentVersion);
+
     if (state.historyArr.length > state.currentVersion) {
       state.currentVersion++;
     }
