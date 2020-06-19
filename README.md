@@ -1,5 +1,5 @@
-# voice-recorder
-
+# voiceRecorder
+此作品为仿站作品，原始站点是 [Voice recorder online](dictaphone.audio)
 ## Project setup
 ```
 npm install
