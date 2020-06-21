@@ -12,6 +12,7 @@
       @getCurrentRecorders="getCurrentRecorders"
       @toolbarShowOrHide="toolbarShowOrHide"
       @controlVersion="controlVersion"
+      ref="recordButtons"
     />
     <timer />
     <toolbar class="toolbar" ref="toolbar" @popupShow="popupShow" />
@@ -36,9 +37,7 @@ export default {
   data() {
     return {
       recorders: [],
-      recorder: {},
-      inBackVersion: false,
-      resouse: {}
+      recorder: {}
     };
   },
   components: {
@@ -48,25 +47,26 @@ export default {
     Toolbar,
     Popup
   },
+
   methods: {
-    controlVersion(s) {
-      this.$store.commit(s, this.recorders);
+    controlVersion(type) {
+      if (type === "addversion") {
+        this.$store.commit(type, this.recorders);
+      } else {
+        this.$store.commit(type, this.recorders);
+        this.getCurrentRecorders();
+      }
     },
     getCurrentRecorders() {
-      console.log(
-        this.$store.state.historyArr[this.$store.state.currentVersion]
-      );
       this.recorders = lodash.cloneDeep(
         this.$store.state.historyArr[this.$store.state.currentVersion]
       );
-
       // 如果选择的不存在，就变成最下面的那个
       const temp = this.recorders.find(item => {
         return item.id === this.recorder.id;
       });
       if (temp) {
         this.recorder = temp;
-        console.log(this.recorder.duration);
       } else {
         this.changeSelect(this.recorders[this.recorders.length - 1]);
       }
@@ -79,20 +79,18 @@ export default {
         numChannels: 1
       });
       recorder.id = id();
+      this.recorders.push(recorder);
       this.recorder = recorder;
-      this.recorders.push(this.recorder);
       this.$store.commit("addversion", this.recorders);
-      console.log("新加了一个 ", this.recorder);
     },
 
     // 修改  select
     changeSelect(recorder) {
-      if (!this.recording) {
-        this.recorder = recorder;
-      }
+      this.$refs.recordButtons.isrecording || (this.recorder = recorder);
+      console.log("changeSelect");
     },
 
-    //====================================================================底部toolbar显示
+    //=========================================================================底部toolbar显示
     toolbarShowOrHide(recording) {
       const toolvar = this.$refs.toolbar.$el;
       if (recording) {
@@ -105,14 +103,7 @@ export default {
       this.$refs.popup.$el.style.display = "block";
     }
   },
-  watch: {
-    recorder: {
-      deep: true,
-      handler(val, oldval) {
-        // console.log(val);
-      }
-    }
-  },
+
   mounted() {
     this.addANew();
   }

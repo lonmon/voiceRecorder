@@ -13,13 +13,11 @@
 
 <script>
 export default {
-  name: "App",
-  components: {},
-  methods: {}
+  name: "App"
 };
 </script>
 
-<style scoped>
+<style >
 @import "./assets/css/base.css";
 @import "./assets/css/icomoon/style.css";
 

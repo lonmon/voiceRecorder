@@ -65,8 +65,6 @@ export default {
       }
     }
   },
-  // props: ["recorders", "selected"],
-  // props: { recorders: Object, selected: String },
 
   methods: {
     addANew() {
